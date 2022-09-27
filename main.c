@@ -57,6 +57,9 @@ static void MX_SPI1_Init(void);
 /* USER CODE BEGIN 0 */
 	LIS3DSH_DataScaled myData;
 	uint8_t drdyFlag=0;
+	int dataX = 0;
+	int dataY = 0;
+	int dataZ = 0;
 /* USER CODE END 0 */
 
 /**
@@ -93,7 +96,7 @@ int main(void)
 	myAccConfigDef.fullScale = LIS3DSH_FULLSCALE_4;
 	myAccConfigDef.antiAliasingBW = LIS3DSH_FILTER_BW_50;
 	myAccConfigDef.enableAxes = LIS3DSH_XYZ_ENABLE;
-	myAccConfigDef.interruptEnable = true;
+	myAccConfigDef.interruptEnable = false;
 	LIS3DSH_Init(&hspi1, &myAccConfigDef);
 
 	LIS3DSH_X_calibrate(-1000.0, 980.0);
@@ -108,13 +111,32 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  if(drdyFlag == 1)
+	  if(LIS3DSH_PollDRDY(1000) == true)
 	  {
 		  myData = LIS3DSH_GetDataScaled();
-		  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
-		  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-		  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
-		  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
+
+		  dataX = myData.x / (1980/360);
+		  dataY = myData.y / (2060/360);
+		  dataZ = myData.z / (1960/360);
+
+		  if(dataX >=5 )
+		  {
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_RESET);
+		  }
+		  if(dataX < -5){
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_12, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_14, GPIO_PIN_RESET);
+		  }
+		  if(dataY >= 5 )
+		  {
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_RESET);
+		  }
+		  if(dataY < -5){
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_15, GPIO_PIN_SET);
+			  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_13, GPIO_PIN_RESET);
+		  }
 	  }
   }
   /* USER CODE END 3 */
@@ -257,17 +279,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-  /* Prevent unused argument(s) compilation warning */
-  UNUSED(GPIO_Pin);
-  /* NOTE: This function Should not be modified, when the callback is needed,
-           the HAL_GPIO_EXTI_Callback could be implemented in the user file
-   */
-  drdyFlag = 1;
-  myData = LIS3DSH_GetDataScaled();
-  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_13);
-}
+
 /* USER CODE END 4 */
 
 /**
@@ -301,3 +313,4 @@ void assert_failed(uint8_t *file, uint32_t line)
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
+
